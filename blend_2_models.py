@@ -25,7 +25,7 @@ def to_numpy(t: torch.Tensor):
 
 def vflip_spatial_weights(state_dict):
     """
-    Make a copy of the model weights with any 3 or 4 dimensional weightz vertical flipped.
+    Make a copy of the model weights with any 3 or 4 dimensional weights vertical flipped.
     This was needed because a model trained using StyleGAN2-ada was producing vertically flipped images.
     """
 
@@ -110,14 +110,20 @@ def blend_2_models(G1, G2,
     state_dict_2 = G2.state_dict()
     state_dict_blend = deepcopy(state_dict_1)
 
+    blended_keys = []
     for block, alpha in zip(blocks, weights):
         for i in range(2):
             for wt in weight_types:
                 # Get weights name
-                w_name = f"synthesis.{block}.conv{i}.{wt}"
+                if block == "b4" and i == 0:
+                    w_name = f"synthesis.{block}.const"
+                else:
+                    w_name = f"synthesis.{block}.conv{i}.{wt}"
 
                 # If weights name is valid, blend weights from two different model
-                if w_name in state_dict_1 and w_name in state_dict_2:
+                if w_name in state_dict_1 and w_name in state_dict_2 \
+                        and w_name not in blended_keys:
+
                     w_model_1 = state_dict_1[w_name]
                     w_model_2 = state_dict_2[w_name]
 
@@ -125,6 +131,8 @@ def blend_2_models(G1, G2,
 
                     print(f"Blending weights for {w_name}")
                     state_dict_blend[w_name] = w_blend
+
+                    blended_keys.append(w_name)
 
     return state_dict_blend
 
